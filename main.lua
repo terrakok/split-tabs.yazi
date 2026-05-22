@@ -60,6 +60,8 @@ local function apply_dual_tab_patch()
             for i = #cx.tabs, 1, -1 do
                 if i ~= dp.tabs[1] and i ~= dp.tabs[2] then
                     ya.emit("tab_close", { i - 1 }) -- 0-based
+                    if dp.tabs[1] > i then dp.tabs[1] = dp.tabs[1] - 1 end
+                    if dp.tabs[2] > i then dp.tabs[2] = dp.tabs[2] - 1 end
                     break
                 end
             end
