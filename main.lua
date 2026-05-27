@@ -220,7 +220,7 @@ end
 
 local function deactivate()
     if not dp then return end
-    ya.emit("tab_close", { other_pane() - 1 })
+    ya.emit("tab_close", { cx.tabs.idx == 1 and 1 or 0 })
     restore_all()
     dp = nil
     saved = {}
