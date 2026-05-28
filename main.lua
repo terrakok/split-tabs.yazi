@@ -52,19 +52,11 @@ local function apply_dual_tab_patch()
             dp.creating = true
             ya.emit("tab_create", { cx.active.current.cwd })
             dp.tabs = { 1, 2 }
-        elseif #cx.tabs >= 2 then
+            return
+        elseif #cx.tabs >= 2 and dp.creating then
             dp.creating = nil
-        end
-
-        if #cx.tabs > 2 then
-            for i = #cx.tabs, 1, -1 do
-                if i ~= dp.tabs[1] and i ~= dp.tabs[2] then
-                    ya.emit("tab_close", { i - 1 }) -- 0-based
-                    if dp.tabs[1] > i then dp.tabs[1] = dp.tabs[1] - 1 end
-                    if dp.tabs[2] > i then dp.tabs[2] = dp.tabs[2] - 1 end
-                    break
-                end
-            end
+            ya.emit("tab_switch", { 0 })
+            ya.emit("peek", { 0 })
         end
 
         dp.pane = active_pane()
@@ -202,16 +194,38 @@ local function activate()
 
     local n = #cx.tabs
     local cur = cx.tabs.idx
-    local tab2_idx
 
     if n >= 2 then
-        tab2_idx = (cur < n) and (cur + 1) or 1
-    else
-        tab2_idx = 2
-        ya.emit("tab_create", { cx.active.current.cwd })
-    end
+        local other = (cur < n) and (cur + 1) or 1
 
-    dp = { pane = 1, view = "dual", tabs = { cur, tab2_idx }, creating = n < 2, preview = false }
+        local keep1 = cur
+        local keep2 = other
+
+        local final_cur_idx = cur
+        for i = n, 1, -1 do
+            if i ~= keep1 and i ~= keep2 then
+                ya.emit("tab_close", { i - 1 })
+                if i < keep1 then
+                    final_cur_idx = final_cur_idx - 1
+                end
+            end
+        end
+
+        local final_other_idx = (final_cur_idx == 1) and 2 or 1
+
+        dp = {
+            pane = 1,
+            view = "dual",
+            tabs = { final_cur_idx, final_other_idx },
+            creating = false,
+            preview = false
+        }
+
+        ya.emit("tab_switch", { final_cur_idx - 1 })
+        ya.emit("peek", { 0 })
+    else
+        dp = { pane = 1, view = "dual", tabs = { 1, 2 }, creating = false, preview = false }
+    end
 
     apply_dual_tab_patch()
     apply_header_patch()
@@ -220,7 +234,7 @@ end
 
 local function deactivate()
     if not dp then return end
-    ya.emit("tab_close", { cx.tabs.idx == 1 and 1 or 0 })
+    ya.emit("tab_close", { dp.tabs[other_pane()] - 1})
     restore_all()
     dp = nil
     saved = {}
