@@ -198,30 +198,20 @@ local function activate()
     if n >= 2 then
         local other = (cur < n) and (cur + 1) or 1
 
-        local keep1 = cur
-        local keep2 = other
+        local final_cur = cur
 
-        local final_cur_idx = cur
         for i = n, 1, -1 do
-            if i ~= keep1 and i ~= keep2 then
+            if i ~= cur and i ~= other then
                 ya.emit("tab_close", { i - 1 })
-                if i < keep1 then
-                    final_cur_idx = final_cur_idx - 1
+                if i < cur then
+                    final_cur = final_cur - 1
                 end
             end
         end
 
-        local final_other_idx = (final_cur_idx == 1) and 2 or 1
+        dp = { pane = 1, view = "dual", tabs = { final_cur, (final_cur == 1) and 2 or 1 }, creating = false, preview = false }
 
-        dp = {
-            pane = 1,
-            view = "dual",
-            tabs = { final_cur_idx, final_other_idx },
-            creating = false,
-            preview = false
-        }
-
-        ya.emit("tab_switch", { final_cur_idx - 1 })
+        ya.emit("tab_switch", { final_cur - 1 })
         ya.emit("peek", { 0 })
     else
         dp = { pane = 1, view = "dual", tabs = { 1, 2 }, creating = false, preview = false }
