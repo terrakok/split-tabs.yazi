@@ -4,6 +4,7 @@
 -- nil when inactive; holds all dual-pane state when active.
 local dp = nil
 local saved = {}
+local unsub_tab_handle = nil
 
 local function active_pane()
     return cx.tabs.idx == dp.tabs[2] and 2 or 1
@@ -48,17 +49,6 @@ end
 
 local function apply_dual_tab_patch()
     Tab.layout = function(self)
-        if #cx.tabs < 2 and not dp.creating then
-            dp.creating = true
-            ya.emit("tab_create", { cx.active.current.cwd })
-            dp.tabs = { 1, 2 }
-            return
-        elseif #cx.tabs >= 2 and dp.creating then
-            dp.creating = nil
-            ya.emit("tab_switch", { 0 })
-            ya.emit("peek", { 0 })
-        end
-
         dp.pane = active_pane()
 
         -- Preview on: split vertically first, then horizontally for panes.
@@ -172,6 +162,11 @@ local function restore_all()
     Header.cwd = saved.header_cwd
     Tabs.height = saved.tabs_height
     Entity.style = saved.entity_style
+
+    if unsub_tab_handle then
+        ps.unsub("tab", unsub_tab_handle)
+        unsub_tab_handle = nil
+    end
 end
 
 local function activate()
@@ -203,19 +198,43 @@ local function activate()
         for i = n, 1, -1 do
             if i ~= cur and i ~= other then
                 ya.emit("tab_close", { i - 1 })
-                if i < cur then
-                    final_cur = final_cur - 1
-                end
+                if i < cur then final_cur = final_cur - 1 end
             end
         end
 
-        dp = { pane = 1, view = "dual", tabs = { final_cur, (final_cur == 1) and 2 or 1 }, creating = false, preview = false }
-
+        dp = { pane = 1, view = "dual", tabs = { final_cur, (final_cur == 1) and 2 or 1 }, preview = false }
         ya.emit("tab_switch", { final_cur - 1 })
         ya.emit("peek", { 0 })
     else
-        dp = { pane = 1, view = "dual", tabs = { 1, 2 }, creating = false, preview = false }
+        dp = { pane = 1, view = "dual", tabs = { 1, 2 }, preview = false }
+        ya.emit("tab_create", { cx.active.current.cwd })
     end
+
+    local last_tabs_count = #cx.tabs
+
+    local function tab_monitor_callback()
+        if not dp then return end
+
+        local current_tabs_count = #cx.tabs
+
+        if current_tabs_count < last_tabs_count then
+            if current_tabs_count < 2 then
+                ya.emit("tab_create", { cx.active.current.cwd })
+                dp.tabs = { 1, 2 }
+            end
+        elseif current_tabs_count > last_tabs_count then
+            if current_tabs_count > 2 then
+                ya.emit("tab_close", { cx.tabs.idx - 1 })
+                ya.emit("tab_switch", { cx.tabs.idx - 2 })
+            end
+        end
+
+        last_tabs_count = current_tabs_count
+        ui.render()
+    end
+
+    ps.sub("tab", tab_monitor_callback)
+    unsub_tab_handle = tab_monitor_callback
 
     apply_dual_tab_patch()
     apply_header_patch()
