@@ -183,6 +183,24 @@ end
 local function activate()
     if dp then return end
 
+    ps.sub("ind-watch", function(args)
+        args.files = { cx.tabs[dp.tabs[1]].current.file, cx.tabs[dp.tabs[2]].current.file }
+
+        -- If the preview pane is active and the hovered entity is a directory,
+        -- add it to the watch list as well so that the directory can be loaded when absent.
+        local hovered = cx.tabs[active_pane()].current.hovered
+        if dp.preview and hovered and hovered.cha.is_dir then
+                args.files[#args.files + 1] = hovered
+        end
+
+        return args
+    end)
+
+    ps.sub("relay-update-files", function(args)
+        args.tabs = { cx.tabs[dp.tabs[1]].id, cx.tabs[dp.tabs[2]].id }
+        return args
+    end)
+
     saved.tab_layout = Tab.layout
     saved.tab_build = Tab.build
     saved.header_cwd = Header.cwd
@@ -218,6 +236,8 @@ end
 
 local function deactivate()
     if not dp then return end
+    ps.unsub("ind-watch")
+    ps.unsub("relay-update-files")
     ya.emit("tab_close", { other_pane() - 1 })
     restore_all()
     dp = nil
