@@ -278,9 +278,49 @@ local function spl_switch_tab()
     ui.render()
 end
 
+-- Apply a file operation to the selection (or the hovered file) and send it
+-- to the other pane.
+local function spl_transfer(operation)
+    if not dp then return end
+
+    local source = cx.active
+    local target = cx.tabs[dp.tabs[other_pane()]]
+    local urls = {}
+
+    for _, file in pairs(source.selected) do
+        urls[#urls + 1] = file.url
+    end
+
+    if #urls == 0 and source.current.hovered then
+        urls[1] = source.current.hovered.url
+    end
+
+    if #urls == 0 then return end
+
+    local target_cwd = target.current.cwd
+    ya.async(function(items, cwd, op)
+        for _, url in ipairs(items) do
+            if url.name then
+                ya.task(op, {
+                    from = url,
+                    to = cwd:join(url.name),
+                }):spawn()
+            end
+        end
+    end, urls, target_cwd, operation)
+end
+
+local function spl_copy()
+    spl_transfer("copy")
+end
+
+local function spl_move()
+    spl_transfer("move")
+end
+
 local function entry(st, job)
     job = type(job) == "string" and { args = { job } } or job
-    local act = job.args[1]
+    local act = job and job.args and job.args[1]
 
     if act == "spl_activate" then
         spl_activate()
@@ -290,6 +330,10 @@ local function entry(st, job)
         spl_toggle()
     elseif act == "spl_switch_tab" then
         spl_switch_tab()
+    elseif act == "spl_copy" then
+        spl_copy()
+    elseif act == "spl_move" then
+        spl_move()
     elseif act == "spl_preview" then
         spl_preview()
     end

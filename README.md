@@ -30,6 +30,8 @@ Add this to your `keymap.toml`:
 prepend_keymap = [
     { on = "\\", run = "plugin split-tabs spl_toggle", desc = "Split-tabs: toggle split tabs mode" },
     { on = "<Tab>", run = "plugin split-tabs spl_switch_tab", desc = "Split-tabs: switch to the other pane" },
+    { on = "<F5>", run = "plugin split-tabs spl_copy", desc = "Split-tabs: copy to the other pane" },
+    { on = "<F6>", run = "plugin split-tabs spl_move", desc = "Split-tabs: move to the other pane" },
     { on = "P", run = "plugin split-tabs spl_preview", desc = "Split-tabs: toggle preview pane" },
     ...
 ]
