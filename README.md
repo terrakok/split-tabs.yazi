@@ -35,6 +35,15 @@ prepend_keymap = [
 ]
 ```
 
+### Activate on startup
+
+The plugin also exposes the idempotent `spl_activate` action. Add this to
+`~/.config/yazi/init.lua` (create the file if it does not exist):
+
+```lua
+ya.emit("plugin", { "split-tabs", "spl_activate" })
+```
+
 ## Support the Developer
 
 <p align="center">

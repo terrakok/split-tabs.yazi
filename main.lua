@@ -190,7 +190,7 @@ local function activate()
         -- add it to the watch list as well so that the directory can be loaded when absent.
         local hovered = cx.tabs[active_pane()].current.hovered
         if dp.preview and hovered and hovered.cha.is_dir then
-                args.files[#args.files + 1] = hovered
+            args.files[#args.files + 1] = hovered
         end
 
         return args
@@ -225,6 +225,9 @@ local function activate()
     else
         tab2_idx = 2
         ya.emit("tab_create", { cx.active.current.cwd })
+        -- tab_create makes the new tab active. Queue a switch back so the
+        -- original tab remains the left (active) pane after initialization.
+        ya.emit("tab_switch", { cur - 1 })
     end
 
     dp = { pane = 1, view = "dual", tabs = { cur, tab2_idx }, creating = n < 2, preview = false }
@@ -243,6 +246,14 @@ local function deactivate()
     dp = nil
     saved = {}
     ui.render()
+end
+
+local function spl_activate()
+    activate()
+end
+
+local function spl_deactivate()
+    deactivate()
 end
 
 local function spl_toggle()
@@ -271,7 +282,11 @@ local function entry(st, job)
     job = type(job) == "string" and { args = { job } } or job
     local act = job.args[1]
 
-    if act == "spl_toggle" then
+    if act == "spl_activate" then
+        spl_activate()
+    elseif act == "spl_deactivate" then
+        spl_deactivate()
+    elseif act == "spl_toggle" then
         spl_toggle()
     elseif act == "spl_switch_tab" then
         spl_switch_tab()
