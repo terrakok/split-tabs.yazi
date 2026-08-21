@@ -1,4 +1,4 @@
---- @since 26.5.6
+--- @since 26.8.15
 --- @sync entry
 
 -- nil when inactive; holds all dual-pane state when active.
