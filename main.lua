@@ -1,4 +1,4 @@
---- @since 26.5.6
+--- @since 26.8.15
 --- @sync entry
 
 -- nil when inactive; holds all dual-pane state when active.
@@ -119,7 +119,7 @@ local function apply_dual_tab_patch()
         if dp.preview and dp.preview_area then
             -- Overlap preview 1 row up to share the pane's bottom border line.
             local pa = dp.preview_area
-            local joined = ui.Rect { x = pa.x, y = pa.y - 1, w = pa.w, h = pa.h + 1 }
+            local joined = ui.Rect { x = pa.x, y = math.max(0, pa.y - 1), w = pa.w, h = pa.h + 1 }
             self._children[#self._children + 1] = Overlay:new("border", joined, {
                 ui.Border(ui.Edge.ALL):area(joined),
             })
@@ -131,6 +131,19 @@ local function apply_dual_tab_patch()
                 ui.Rect { x = 0, y = 0, w = 0, h = self._area.h }, {})
         end
     end
+end
+
+-- Display width of a string. `#s` counts bytes, which breaks alignment for
+-- non-ASCII paths (CJK, emoji, accented characters); prefer ui.width when the
+-- running Yazi exposes it and fall back to the byte length otherwise.
+local function text_width(s)
+    if ui.width then
+        local ok, w = pcall(ui.width, s)
+        if ok and type(w) == "number" then
+            return w
+        end
+    end
+    return #s
 end
 
 local function apply_header_patch()
@@ -151,13 +164,13 @@ local function apply_header_patch()
 
         -- Left path: pad to exactly `mid` columns so the separator aligns with the pane split.
         local p1 = ya.readable_path(tostring(tab1.current.cwd))
-        p1 = ui.truncate(p1, { max = mid, rtl = true })
-        local pad = mid - #p1
+        p1 = ui.truncate(p1, { max = math.max(0, mid), rtl = true })
+        local pad = mid - text_width(p1)
         if pad > 0 then
             p1 = p1 .. string.rep(" ", pad)
         end
 
-        local right_avail = math.max(0, w - mid - 1 - (self._right_width or 0)) - 4
+        local right_avail = math.max(0, math.max(0, w - mid - 1 - (self._right_width or 0)) - 4)
         local p2 = ya.readable_path(tostring(tab2.current.cwd))
         p2 = ui.truncate(p2, { max = right_avail, rtl = true })
 
@@ -241,7 +254,7 @@ local function deactivate()
     if not dp then return end
     ps.unsub("ind-watch")
     ps.unsub("relay-update-files")
-    ya.emit("tab_close", { other_pane() - 1 })
+    ya.emit("tab_close", { other_pane() - 1 }) -- 0-based
     restore_all()
     dp = nil
     saved = {}
